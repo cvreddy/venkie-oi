@@ -28,8 +28,8 @@ app  = Flask(__name__)
 CORS(app)
 
 # ── CONFIG ─────────────────────────────────────────
-API_KEY      = "dc927c0f-918a-4c21-ae03-493acaa0608a"
-API_SECRET   = "21ebqgxrft"
+API_KEY      = "7500ed4a-e043-45c5-8bf6-506dc069efe1"
+API_SECRET   = "2xmr2lfwy3"
 REDIRECT_URI = "https://venkie-oi.onrender.com/callback"
 NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 CACHE_TTL    = 300          # 5 minutes
