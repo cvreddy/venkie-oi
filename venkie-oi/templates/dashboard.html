@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIFTY50 Live OI Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c10;--bg2:#0f1218;--bg3:#161b24;
+  --border:#1e2632;--border2:#2a3444;
+  --text:#c8d4e8;--text2:#6b7fa0;
+  --bull:#00e676;--bear:#ff3d57;--warn:#ffab00;--info:#40c4ff;--atm:#b39ddb;
+  --font:'JetBrains Mono',monospace;--ui:'Rajdhani',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;}
+
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 18px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  position:sticky;top:0;z-index:100;}
+.logo{font-size:14px;font-weight:700;color:var(--info);letter-spacing:3px;}
+.hdr-right{display:flex;align-items:center;gap:14px;}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bull);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+.timer{font-size:11px;color:var(--text2);}
+.btn{font-family:var(--ui);font-size:13px;font-weight:600;letter-spacing:1px;
+  background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:var(--bull);
+  padding:5px 14px;border-radius:4px;cursor:pointer;}
+.btn:hover{background:rgba(0,230,118,.2);}
+.badge{font-size:11px;background:rgba(64,196,255,.1);border:1px solid rgba(64,196,255,.25);
+  color:var(--info);padding:3px 10px;border-radius:4px;}
+
+.strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
+  display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;}
+.si{display:flex;align-items:baseline;gap:6px;}
+.sl{font-size:10px;color:var(--text2);letter-spacing:1px;}
+.sv{font-size:15px;font-weight:700;}
+.sdv{width:1px;height:18px;background:var(--border2);}
+
+/* INDICATOR BAR — RSI + ADX */
+.ind-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.ind-block{display:flex;align-items:center;gap:8px;}
+.ind-label{font-size:10px;color:var(--text2);letter-spacing:1px;}
+.ind-val{font-size:16px;font-weight:700;}
+.ind-sig{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:700;letter-spacing:.5px;}
+.ind-divider{width:1px;height:24px;background:var(--border2);}
+.rsi-meter{width:120px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;position:relative;}
+.rsi-fill{height:100%;border-radius:3px;transition:width .5s;}
+.rsi-zones{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;}
+.rsi-ob{position:absolute;right:0;width:30%;height:100%;border-left:1px solid rgba(255,61,87,.4);}
+.rsi-os{position:absolute;left:0;width:30%;height:100%;border-right:1px solid rgba(0,230,118,.4);}
+
+/* TREND BAR */
+.trend-bar{padding:8px 18px;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.trend-label{font-size:10px;color:var(--text2);letter-spacing:1.5px;}
+.trend-val{font-size:14px;font-weight:700;letter-spacing:1px;}
+.trend-reason{font-size:11px;color:var(--text2);flex:1;}
+.trend-meter{width:160px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;flex-shrink:0;}
+.trend-fill{height:100%;border-radius:3px;transition:width .6s;}
+
+#err{display:none;background:rgba(255,61,87,.1);border:1px solid rgba(255,61,87,.3);
+  color:var(--bear);padding:8px 18px;font-size:12px;}
+
+.sigs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 18px;}
+@media(max-width:800px){.sigs{grid-template-columns:1fr 1fr;}}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+.sc-lbl{font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);margin-bottom:4px;}
+.sc-val{font-size:14px;font-weight:700;}
+.sc-sub{font-size:11px;color:var(--text2);margin-top:3px;font-family:var(--ui);}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px 18px;}
+@media(max-width:900px){.grid{grid-template-columns:1fr;}}
+.full{grid-column:1/-1;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.ch{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.ct{font-size:10px;font-weight:700;letter-spacing:2px;}
+.cs{font-size:10px;color:var(--text2);}
+
+/* ── STRIKE TABLE — KEY FIX ── */
+table{width:100%;border-collapse:collapse;}
+th{padding:6px 8px;font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--text2);
+  text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3);}
+th.th-strike{text-align:center;color:var(--warn);letter-spacing:1px;}
+td{padding:7px 8px;font-size:12px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+td.td-strike{text-align:center;font-weight:700;font-size:13px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.03);}
+.atm-row td{background:rgba(124,77,255,.1)!important;}
+.atm-row td.td-strike{background:rgba(124,77,255,.25)!important;}
+.hot-row td{background:rgba(255,171,0,.04)!important;}
+
+/* Strike badge inside table */
+.sk-c{color:var(--bear);font-weight:700;}
+.sk-p{color:var(--bull);font-weight:700;}
+.sk-a{color:var(--atm);font-weight:700;}
+
+.bw{display:flex;align-items:center;gap:4px;justify-content:flex-end;}
+.bb{width:44px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.bf{height:100%;border-radius:3px;}
+.bc{background:var(--bear);}
+.bp{background:var(--bull);}
+
+.sig{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.5px;}
+.sa{background:rgba(255,61,87,.18);color:var(--bear);border:1px solid rgba(255,61,87,.35);}
+.se{background:rgba(0,230,118,.12);color:var(--bull);border:1px solid rgba(0,230,118,.3);}
+.sw{background:rgba(0,230,118,.12);color:var(--bull);border:1px solid rgba(0,230,118,.3);}
+.su{background:rgba(255,171,0,.1);color:var(--warn);border:1px solid rgba(255,171,0,.3);}
+.sn{background:rgba(107,127,160,.1);color:var(--text2);border:1px solid var(--border2);}
+
+.hw{padding:10px 12px;}
+.hr{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.hsk{font-size:11px;color:var(--text2);width:58px;text-align:right;flex-shrink:0;}
+.hbs{flex:1;display:flex;align-items:center;gap:2px;}
+.hcb{height:14px;background:var(--bear);border-radius:2px 0 0 2px;min-width:2px;}
+.hpb{height:14px;background:var(--bull);border-radius:0 2px 2px 0;min-width:2px;}
+.hcn{width:1px;background:var(--border2);height:14px;flex-shrink:0;}
+.hlc{font-size:10px;color:var(--bear);width:36px;text-align:right;flex-shrink:0;}
+.hlp{font-size:10px;color:var(--bull);width:36px;flex-shrink:0;}
+.hatm{font-size:10px;color:var(--atm);margin-left:3px;}
+.hnet{font-size:10px;width:38px;text-align:right;}
+.hchg{font-size:9px;width:70px;text-align:right;margin-left:2px;}
+
+.gg{display:grid;grid-template-columns:repeat(4,1fr);}
+.gc{padding:10px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
+.gc:nth-child(4n){border-right:none;} .gc:nth-last-child(-n+4){border-bottom:none;}
+.gl{font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:3px;}
+.gv{font-size:14px;font-weight:700;} .gs{font-size:10px;color:var(--text2);margin-top:2px;}
+
+.act-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}
+.act-col{padding:12px 14px;border-right:1px solid var(--border);}
+.act-col:last-child{border-right:none;}
+.act-title{font-size:10px;letter-spacing:1.5px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.act-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.act-row:last-child{border-bottom:none;}
+.act-strike{font-size:12px;font-weight:700;}
+.act-oi{font-size:11px;font-weight:700;} .act-chg{font-size:10px;color:var(--text2);}
+.act-note{font-size:10px;color:var(--text2);margin-top:8px;line-height:1.5;font-family:var(--ui);}
+.act-empty{font-size:11px;color:var(--text2);padding:4px 0;line-height:1.6;}
+
+.ts-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.ts-row:last-child{border-bottom:none;}
+.ts-label{font-size:11px;color:var(--text2);}
+.ts-val{font-size:12px;font-weight:700;}
+
+/* SNAPSHOT STATUS BAR */
+.snap-bar{background:var(--bg2);border-top:1px solid var(--border);padding:5px 18px;
+  display:flex;align-items:center;gap:10px;font-size:10px;color:var(--text2);}
+.snap-dot{width:6px;height:6px;border-radius:50%;background:var(--bull);}
+
+.statusbar{padding:5px 18px;background:var(--bg);border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;font-size:10px;color:var(--text2);
+  position:fixed;bottom:0;left:0;right:0;}
+.loading{color:var(--text2);padding:20px;text-align:center;font-size:12px;}
+.bull{color:var(--bull)!important;} .bear{color:var(--bear)!important;}
+.warn{color:var(--warn)!important;} .info{color:var(--info)!important;}
+.atmc{color:var(--atm)!important;} .muted{color:var(--text2)!important;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div class="logo">NIFTY·OI</div>
+    <div class="badge" id="expiry-badge">Expiry: —</div>
+    <div style="font-size:11px;color:var(--text2);" id="upd">—</div>
+  </div>
+  <div class="hdr-right">
+    <div class="dot" id="dot"></div>
+    <div class="timer" id="timer">5:00</div>
+    <button class="btn" onclick="doFetch()">↺ REFRESH</button>
+  </div>
+</div>
+
+<div id="err">⚠ Cannot reach server — start upstox_oi_server.py and login at /login</div>
+
+<!-- MARKET STRIP -->
+<div class="strip">
+  <div class="si"><span class="sl">SPOT</span><span class="sv" id="m-spot">—</span></div>
+  <div class="sdv"></div>
+  <div class="si"><span class="sl">FUTURES</span><span class="sv bull" id="m-fut">—</span></div>
+  <div class="si"><span class="sl">PREMIUM</span><span class="sv" id="m-prem">—</span></div>
+  <div class="sdv"></div>
+  <div class="si"><span class="sl">VIX</span><span class="sv warn" id="m-vix">—</span></div>
+  <div class="sdv"></div>
+  <div class="si"><span class="sl">PCR</span><span class="sv" id="m-pcr">—</span></div>
+  <div class="sdv"></div>
+  <div class="si"><span class="sl">MAX PAIN</span><span class="sv warn" id="m-mp">—</span></div>
+  <div class="sdv"></div>
+  <div class="si"><span class="sl">ATM</span><span class="sv atmc" id="m-atm">—</span></div>
+  <div class="sdv"></div>
+  <div class="si"><span class="sl">BIAS</span><span class="sv" id="m-bias">—</span></div>
+</div>
+
+<!-- RSI + ADX BAR -->
+<div class="ind-bar">
+  <div class="ind-block">
+    <span class="ind-label">RSI(14)</span>
+    <span class="ind-val" id="rsi-val">—</span>
+    <div class="rsi-meter">
+      <div class="rsi-os"></div>
+      <div class="rsi-ob"></div>
+      <div class="rsi-fill" id="rsi-fill" style="width:50%;background:var(--warn)"></div>
+    </div>
+    <span class="ind-sig" id="rsi-sig" style="background:rgba(107,127,160,.1);color:var(--text2)">—</span>
+  </div>
+  <div class="ind-divider"></div>
+  <div class="ind-block">
+    <span class="ind-label">ADX(14)</span>
+    <span class="ind-val" id="adx-val">—</span>
+    <span class="ind-sig" id="adx-sig" style="background:rgba(107,127,160,.1);color:var(--text2)">—</span>
+  </div>
+  <div class="ind-block">
+    <span class="ind-label">+DI</span>
+    <span class="ind-val bull" id="pdi-val">—</span>
+  </div>
+  <div class="ind-block">
+    <span class="ind-label">−DI</span>
+    <span class="ind-val bear" id="ndi-val">—</span>
+  </div>
+  <div class="ind-divider"></div>
+  <div class="ind-block">
+    <span class="ind-label">ADX TREND</span>
+    <span class="ind-val" id="adx-trend">—</span>
+  </div>
+  <div class="ind-divider"></div>
+  <div class="ind-block" style="margin-left:auto;">
+    <span class="ind-label">SNAPSHOT</span>
+    <span style="font-size:11px;color:var(--bull);" id="snap-status">Saving every 5min →</span>
+    <span style="font-size:11px;color:var(--text2);" id="snap-file">snapshots/</span>
+  </div>
+</div>
+
+<!-- OI TREND BAR -->
+<div class="trend-bar">
+  <span class="trend-label">OI TREND</span>
+  <span class="trend-val" id="trend-val">—</span>
+  <span class="trend-reason" id="trend-reason">—</span>
+  <div class="trend-meter"><div class="trend-fill" id="trend-fill" style="width:50%"></div></div>
+  <span style="font-size:10px;color:var(--text2);" id="trend-str">—</span>
+</div>
+
+<!-- SIGNAL CARDS -->
+<div class="sigs">
+  <div class="sc"><div class="sc-lbl">PCR SIGNAL</div><div class="sc-val" id="sig-pcr">—</div><div class="sc-sub" id="sig-pcr-s">—</div></div>
+  <div class="sc"><div class="sc-lbl">FUTURES BIAS</div><div class="sc-val" id="sig-fut">—</div><div class="sc-sub" id="sig-fut-s">—</div></div>
+  <div class="sc"><div class="sc-lbl">MAX PAIN DRIFT</div><div class="sc-val" id="sig-mp">—</div><div class="sc-sub" id="sig-mp-s">—</div></div>
+  <div class="sc"><div class="sc-lbl">VIX ALERT</div><div class="sc-val" id="sig-vix">—</div><div class="sc-sub" id="sig-vix-s">—</div></div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="grid">
+
+  <!-- CALL TABLE -->
+  <div class="card">
+    <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE &nbsp;|&nbsp; ATM ±5 STRIKES</span><span class="cs">OI building / unwinding</span></div>
+    <table>
+      <thead><tr>
+        <th class="th-strike">STRIKE ₹</th>
+        <th>CE LTP</th>
+        <th>OI (L)</th>
+        <th>OI Chg (5m)</th>
+        <th>OI Chg (Day)</th>
+        <th>Vol/OI</th>
+        <th>IV%</th>
+        <th>Activity</th>
+        <th>Bar</th>
+      </tr></thead>
+      <tbody id="call-tbody"><tr><td colspan="9" class="loading">Waiting...</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- PUT TABLE -->
+  <div class="card">
+    <div class="ch"><span class="ct bull">PUT SIDE — SUPPORT &nbsp;|&nbsp; ATM ±5 STRIKES</span><span class="cs">OI building / unwinding</span></div>
+    <table>
+      <thead><tr>
+        <th class="th-strike">STRIKE ₹</th>
+        <th>PE LTP</th>
+        <th>OI (L)</th>
+        <th>OI Chg (5m)</th>
+        <th>OI Chg (Day)</th>
+        <th>Vol/OI</th>
+        <th>IV%</th>
+        <th>Activity</th>
+        <th>Bar</th>
+      </tr></thead>
+      <tbody id="put-tbody"><tr><td colspan="9" class="loading">Waiting...</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- HISTOGRAM -->
+  <div class="card">
+    <div class="ch">
+      <span class="ct info">OI HISTOGRAM — ATM ±5</span>
+      <span style="display:flex;gap:12px;"><span class="cs bear">■ Call</span><span class="cs bull">■ Put</span><span class="cs warn">Δ OI Change</span></span>
+    </div>
+    <div class="hw" id="histogram"><div class="loading">Waiting...</div></div>
+  </div>
+
+  <!-- GREEKS -->
+  <div class="card">
+    <div class="ch"><span class="ct atmc">GREEKS — ATM SNAPSHOT</span><span class="cs" id="atm-lbl">ATM: —</span></div>
+    <div class="gg" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
+  </div>
+
+  <!-- ACTIVITY -->
+  <div class="card full">
+    <div class="ch"><span class="ct warn">OI ACTIVITY — WHERE SELLERS ARE ADDING vs EXITING (ATM ±5)</span><span class="cs" id="act-time">—</span></div>
+    <div class="act-grid" id="activity"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
+  </div>
+
+  <!-- ANALYSIS -->
+  <div class="card full">
+    <div class="ch"><span class="ct atmc">OI + INDICATOR MARKET ANALYSIS</span><span class="cs" id="analysis-time">—</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;" id="analysis-grid">
+      <div class="loading" style="grid-column:1/-1">Waiting...</div>
+    </div>
+  </div>
+
+</div>
+
+<div style="height:28px"></div>
+<div class="statusbar">
+  <span id="st-left">Connecting...</span>
+  <span id="st-right">OI Change builds after 1st 5-min cycle · Snapshots auto-saved to snapshots/ folder</span>
+</div>
+
+<script>
+let secs = 300
+
+async function doFetch() {
+  document.getElementById('dot').style.background = 'var(--warn)'
+  try {
+    const [jr, hr] = await Promise.all([fetch('/oi/json'), fetch('/oi/histogram')])
+    if (!jr.ok) throw new Error('HTTP ' + jr.status)
+    const raw = await jr.json()
+    if (raw.error) throw new Error(raw.error)
+
+    // Normalize chain keys (Python sends float keys like "22700.0")
+    const chain = {}
+    Object.keys(raw.chain || {}).forEach(k => { const nk = parseFloat(k); chain[nk] = {...raw.chain[k], strike: nk} })
+    raw.chain = chain
+
+    const atk = {}
+    Object.keys(raw.atm_strikes || {}).forEach(k => { const nk = parseFloat(k); atk[nk] = {...raw.atm_strikes[k], strike: nk} })
+    raw.atm_strikes = atk
+
+    raw.atm      = parseFloat(raw.atm)      || 0
+    raw.max_pain = parseFloat(raw.max_pain) || 0
+    raw.spot     = parseFloat(raw.spot)     || 0
+    raw.futures  = parseFloat(raw.futures)  || raw.spot
+    raw.premium  = parseFloat(raw.premium)  || 0
+    raw.pcr      = parseFloat(raw.pcr)      || 0
+    raw.vix      = parseFloat(raw.vix)      || 0
+
+    let hist = []
+    try { hist = (await hr.json()).map(h => ({...h, strike: parseFloat(h.strike || 0)})) } catch(e) {}
+
+    document.getElementById('err').style.display = 'none'
+    render(raw, hist)
+
+    secs = 300
+    document.getElementById('upd').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN')
+    document.getElementById('dot').style.background = 'var(--bull)'
+    const ind = raw.indicators || {}
+    document.getElementById('st-left').textContent =
+      'Live · Spot ₹' + fmt(raw.spot) + ' · PCR ' + raw.pcr.toFixed(2) +
+      ' · ATM ₹' + Math.round(raw.atm).toLocaleString('en-IN') +
+      ' · RSI ' + (ind.rsi || '—') + ' · ADX ' + (ind.adx || '—') +
+      ' · Trend: ' + (raw.trend || '—')
+
+  } catch(e) {
+    document.getElementById('err').style.display = 'block'
+    document.getElementById('dot').style.background = 'var(--bear)'
+    document.getElementById('st-left').textContent = 'Error: ' + e.message
+    console.error(e)
+  }
+}
+
+function render(d, hist) {
+  const {spot, futures, premium, pcr, vix, max_pain: mp, atm, trend, trend_reason, trend_strength} = d
+  const ind = d.indicators || {}
+
+  document.getElementById('expiry-badge').textContent = 'Expiry: ' + (d.expiry || '—')
+
+  // Strip
+  set('m-spot', '₹' + fmt(spot))
+  set('m-fut',  '₹' + fmt(futures))
+  const pe = document.getElementById('m-prem')
+  pe.textContent = (premium >= 0 ? '+' : '') + premium.toFixed(1) + 'pts'
+  pe.className = 'sv ' + (premium >= 0 ? 'bull' : 'bear')
+  set('m-vix', vix ? vix.toFixed(2) : '—')
+  const pcrEl = document.getElementById('m-pcr')
+  pcrEl.textContent = pcr.toFixed(2)
+  pcrEl.className = 'sv ' + (pcr >= 1.2 ? 'bull' : pcr <= 0.8 ? 'bear' : 'warn')
+  set('m-mp', '₹' + Math.round(mp).toLocaleString('en-IN'))
+  set('m-atm', '₹' + Math.round(atm).toLocaleString('en-IN'))
+  const biasEl = document.getElementById('m-bias')
+  biasEl.textContent = pcr >= 1.2 ? 'BULLISH' : pcr <= 0.8 ? 'BEARISH' : 'NEUTRAL'
+  biasEl.className = 'sv ' + (pcr >= 1.2 ? 'bull' : pcr <= 0.8 ? 'bear' : 'warn')
+
+  // RSI + ADX bar
+  if (ind.rsi !== null && ind.rsi !== undefined) {
+    set('rsi-val', ind.rsi.toFixed(1))
+    const rsiCol = ind.rsi >= 70 ? 'var(--bear)' : ind.rsi <= 30 ? 'var(--bull)' : ind.rsi >= 60 ? 'var(--bear)' : ind.rsi <= 40 ? 'var(--bull)' : 'var(--warn)'
+    document.getElementById('rsi-val').style.color = rsiCol
+    document.getElementById('rsi-fill').style.width = ind.rsi + '%'
+    document.getElementById('rsi-fill').style.background = rsiCol
+    const sigEl = document.getElementById('rsi-sig')
+    sigEl.textContent = ind.rsi_signal || '—'
+    sigEl.style.background = ind.rsi >= 70 ? 'rgba(255,61,87,.18)' : ind.rsi <= 30 ? 'rgba(0,230,118,.12)' : 'rgba(255,171,0,.1)'
+    sigEl.style.color = rsiCol
+  }
+  if (ind.adx !== null && ind.adx !== undefined) {
+    set('adx-val', ind.adx.toFixed(1))
+    const adxCol = ind.adx >= 25 ? 'var(--bull)' : ind.adx >= 20 ? 'var(--warn)' : 'var(--text2)'
+    document.getElementById('adx-val').style.color = adxCol
+    const asEl = document.getElementById('adx-sig')
+    asEl.textContent = ind.adx_signal || '—'
+    asEl.style.color = adxCol
+    asEl.style.background = ind.adx >= 25 ? 'rgba(0,230,118,.1)' : 'rgba(255,171,0,.1)'
+    set('pdi-val', ind.pdi !== null ? ind.pdi.toFixed(1) : '—')
+    set('ndi-val', ind.ndi !== null ? ind.ndi.toFixed(1) : '—')
+    const atEl = document.getElementById('adx-trend')
+    atEl.textContent = ind.adx_trend || '—'
+    atEl.style.color = (ind.adx_trend||'').includes('BULL') ? 'var(--bull)' : (ind.adx_trend||'').includes('BEAR') ? 'var(--bear)' : 'var(--warn)'
+  }
+
+  // Snapshot info
+  const today = new Date().toISOString().slice(0,10)
+  set('snap-file', `snapshots/nifty_oi_${today}.csv`)
+
+  // Trend bar
+  const tCol = (trend||'').includes('BULL') ? 'var(--bull)' : (trend||'').includes('BEAR') ? 'var(--bear)' : 'var(--warn)'
+  styl('trend-val', trend || '—', tCol)
+  set('trend-reason', trend_reason || '—')
+  document.getElementById('trend-fill').style.width = (trend_strength || 50) + '%'
+  document.getElementById('trend-fill').style.background = trend_strength > 60 ? 'var(--bull)' : trend_strength < 40 ? 'var(--bear)' : 'var(--warn)'
+  set('trend-str', (trend_strength || 50) + '%')
+
+  // Signal cards
+  const pcrSig = pcr < 0.70 ? 'STRONG SELL' : pcr < 0.85 ? 'BEARISH' : pcr < 1.15 ? 'NEUTRAL' : pcr < 1.30 ? 'BULLISH' : 'STRONG BUY'
+  styl('sig-pcr', pcrSig, pcr < 0.85 ? 'var(--bear)' : pcr < 1.15 ? 'var(--warn)' : 'var(--bull)')
+  set('sig-pcr-s', 'PCR ' + pcr.toFixed(2) + ' — ' + (pcr <= 0.8 ? 'Call writers dominate' : pcr >= 1.2 ? 'Put writers dominate' : 'Balanced'))
+  styl('sig-fut', premium >= 0 ? 'MILD BULLISH' : 'MILD BEARISH', premium >= 0 ? 'var(--bull)' : 'var(--bear)')
+  set('sig-fut-s', 'Futures ' + (premium >= 0 ? '+' : '') + premium.toFixed(1) + 'pts above spot')
+  styl('sig-mp', (mp-spot>=0?'+':'')+'₹'+Math.round(mp-spot).toLocaleString('en-IN')+' from spot', 'var(--warn)')
+  set('sig-mp-s', 'Max Pain ₹'+Math.round(mp).toLocaleString('en-IN')+' — expiry pull')
+  styl('sig-vix', vix>25?'PREMIUMS HIGH':vix>18?'ELEVATED':vix?'NORMAL':'N/A',
+    vix>25?'var(--bear)':vix>18?'var(--warn)':'var(--bull)')
+  set('sig-vix-s', vix ? 'VIX '+vix.toFixed(2)+(vix>25?' — sellers benefit':'') : 'Unavailable')
+
+  // Tables
+  const atk = d.atm_strikes
+  const strikes = Object.keys(atk).map(Number).sort((a,b)=>a-b)
+  const maxCOI = Math.max(...strikes.map(s => atk[s].call_oi || 0))
+  const maxPOI = Math.max(...strikes.map(s => atk[s].put_oi  || 0))
+
+  const callRows = strikes.filter(s=>s>=atm).map(s=>atk[s]).sort((a,b)=>b.call_oi-a.call_oi)
+  const putRows  = strikes.filter(s=>s<=atm).map(s=>atk[s]).sort((a,b)=>b.put_oi-a.put_oi)
+
+  document.getElementById('call-tbody').innerHTML =
+    callRows.length ? callRows.map(r=>rowHTML(r,atm,maxCOI,true)).join('') :
+    '<tr><td colspan="9" class="loading">No data</td></tr>'
+
+  document.getElementById('put-tbody').innerHTML =
+    putRows.length ? putRows.map(r=>rowHTML(r,atm,maxPOI,false)).join('') :
+    '<tr><td colspan="9" class="loading">No data</td></tr>'
+
+  renderHist(hist, atm)
+  renderGreeks(atm, pcr, vix, atk, ind)
+  renderActivity(callRows, putRows)
+  renderAnalysis(d, atk, atm, ind)
+}
+
+// ── TABLE ROW ── Strike price in its own prominent column
+function actBadge(chg, isCall) {
+  const big = Math.abs(chg) > 500000
+  if (isCall) {
+    if (chg > 0) return `<span class="sig sa">SELL ADD${big?'▼▼':'▼'}</span>`
+    if (chg < 0) return `<span class="sig se">COVER${big?'▲▲':'▲'}</span>`
+    return '<span class="sig sn">NEUTRAL</span>'
+  } else {
+    if (chg > 0) return `<span class="sig sw">BUY WALL${big?'▲▲':'▲'}</span>`
+    if (chg < 0) return `<span class="sig su">UNWIND${big?'▼▼':'▼'}</span>`
+    return '<span class="sig sn">NEUTRAL</span>'
+  }
+}
+
+function rowHTML(r, atm, maxOI, isCall) {
+  const s     = parseFloat(r.strike)
+  const isA   = Math.abs(s - atm) < 1
+  const isHot = Math.abs(isCall ? (r.call_oi_chg||0) : (r.put_oi_chg||0)) > 500000
+  const oi    = isCall ? (r.call_oi||0) : (r.put_oi||0)
+  const chg   = isCall ? (r.call_oi_chg||0) : (r.put_oi_chg||0)
+  const chgD  = isCall ? (r.call_oi_chg_day||0) : (r.put_oi_chg_day||0)
+  const voi   = isCall ? (r.call_vol_oi||0) : (r.put_vol_oi||0)
+  const iv    = isCall ? (r.call_iv||0) : (r.put_iv||0)
+  const ltp   = isCall ? (r.call_ltp||0) : (r.put_ltp||0)
+  const pct   = maxOI > 0 ? Math.round((oi/maxOI)*100) : 0
+  const oiL   = (oi/100000).toFixed(2)
+  const chgL  = (Math.abs(chg)/100000).toFixed(2)
+  const chgDL = (Math.abs(chgD)/100000).toFixed(2)
+  const cs    = chg>0?'+':(chg<0?'-':'')
+  const ds    = chgD>0?'+':(chgD<0?'-':'')
+  const cc    = chg>0?'var(--bear)':chg<0?'var(--bull)':'var(--text2)'
+  const dc    = chgD>0?'var(--bear)':chgD<0?'var(--bull)':'var(--text2)'
+  const skCls = isA ? 'sk-a' : isCall ? 'sk-c' : 'sk-p'
+
+  return `<tr class="${isA?'atm-row':isHot?'hot-row':''}">
+    <td class="td-strike"><span class="${skCls}">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</span></td>
+    <td style="color:var(--warn)">₹${ltp.toFixed(2)}</td>
+    <td>${oiL}</td>
+    <td style="color:${cc};font-weight:${isHot?'700':'400'}">${cs}${chgL}</td>
+    <td style="color:${dc}">${ds}${chgDL}</td>
+    <td style="color:${voi>8?'var(--warn)':'var(--text)'}">${voi.toFixed(2)}x</td>
+    <td style="color:${iv>30?'var(--bear)':'var(--text)'}">${iv.toFixed(1)}%</td>
+    <td>${actBadge(chg, isCall)}</td>
+    <td><div class="bw"><span style="font-size:10px;color:var(--text2);min-width:24px">${pct}%</span>
+      <div class="bb"><div class="bf ${isCall?'bc':'bp'}" style="width:${pct}%"></div></div></div></td>
+  </tr>`
+}
+
+// ── HISTOGRAM
+function renderHist(hist, atm) {
+  const el = document.getElementById('histogram')
+  if (!hist||!hist.length){el.innerHTML='<div class="loading">No data</div>';return}
+  const maxV = Math.max(Math.max(...hist.map(h=>h.call_oi||0)), Math.max(...hist.map(h=>h.put_oi||0))) || 1
+  const W = 90
+  el.innerHTML = hist.map(h=>{
+    const s   = parseFloat(h.strike||0)
+    const isA = Math.abs(s-atm)<1
+    const cw  = Math.round((h.call_oi/maxV)*W)
+    const pw  = Math.round((h.put_oi/maxV)*W)
+    const net = (h.put_oi||0)-(h.call_oi||0)
+    const nc  = net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)'
+    const cc  = h.call_oi_chg||0, pc = h.put_oi_chg||0
+    const chgStr = (cc!==0||pc!==0) ? `C:${cc>=0?'+':''}${(cc/100000).toFixed(1)} P:${pc>=0?'+':''}${(pc/100000).toFixed(1)}` : '—'
+    const chgCol = (cc>0||pc>0)?'var(--warn)':(cc<0||pc<0)?'var(--bull)':'var(--text2)'
+    return `<div class="hr">
+      <div class="hlc">${((h.call_oi||0)/100000).toFixed(1)}</div>
+      <div class="hbs">
+        <div style="display:flex;justify-content:flex-end;width:${W}px"><div class="hcb" style="width:${cw}px"></div></div>
+        <div class="hcn"></div>
+        <div style="width:${W}px"><div class="hpb" style="width:${pw}px"></div></div>
+      </div>
+      <div class="hlp">${((h.put_oi||0)/100000).toFixed(1)}</div>
+      <div class="hsk" style="font-weight:${isA?'700':'400'};color:${isA?'var(--atm)':'var(--text2)'}">
+        ${Math.round(s).toLocaleString('en-IN')}${isA?'<span class="hatm">◄</span>':''}
+      </div>
+      <div class="hnet" style="color:${nc}">${net>=0?'+':''}${(net/100000).toFixed(1)}</div>
+      <div class="hchg" style="color:${chgCol}">${chgStr}</div>
+    </div>`
+  }).join('')
+}
+
+// ── GREEKS
+function renderGreeks(atm, pcr, vix, atk, ind) {
+  document.getElementById('atm-lbl').textContent = 'ATM: ₹' + Math.round(atm).toLocaleString('en-IN')
+  const a = atk[atm]||{}
+  const civ=a.call_iv||0, piv=a.put_iv||0
+  const avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20
+  const dc=Math.min(0.65,Math.max(0.35,0.50+(pcr-1)*0.05))
+  const gamma=0.0004
+  const theta=-(atm*(avgIV/100)*gamma*15.87).toFixed(2)
+  const vega=(atm*gamma*100*(avgIV/100)).toFixed(2)
+  const rsiDisplay = ind.rsi ? `${ind.rsi} (${ind.rsi_signal})` : 'N/A'
+  const adxDisplay = ind.adx ? `${ind.adx} (${ind.adx_signal})` : 'N/A'
+  const cells=[
+    {l:'DELTA (CALL)',v:'+'+dc.toFixed(2),c:'var(--bull)',s:'Directional bias'},
+    {l:'DELTA (PUT)', v:(-(1-dc)).toFixed(2),c:'var(--bear)',s:'Directional bias'},
+    {l:'GAMMA',       v:gamma.toFixed(4),c:'var(--text)',s:'Delta acceleration'},
+    {l:'THETA/DAY',   v:'₹'+Math.abs(theta),c:'var(--bear)',s:'Erodes buyers daily'},
+    {l:'VEGA',        v:vega,c:'var(--warn)',s:'Vol sensitivity'},
+    {l:'IV ATM AVG',  v:avgIV.toFixed(2)+'%',c:'var(--warn)',s:'Current IV'},
+    {l:'RSI(14)',      v:rsiDisplay,c:ind.rsi>=70?'var(--bear)':ind.rsi<=30?'var(--bull)':'var(--warn)',s:'Momentum signal'},
+    {l:'ADX(14)',      v:adxDisplay,c:ind.adx>=25?'var(--bull)':ind.adx>=20?'var(--warn)':'var(--text2)',s:'Trend strength'},
+  ]
+  document.getElementById('greeks').innerHTML=cells.map(c=>
+    `<div class="gc"><div class="gl">${c.l}</div><div class="gv" style="color:${c.c}">${c.v}</div><div class="gs">${c.s}</div></div>`
+  ).join('')
+}
+
+// ── ACTIVITY
+function renderActivity(callRows, putRows) {
+  const callAdd  = callRows.filter(r=>(r.call_oi_chg||0)>0).sort((a,b)=>b.call_oi_chg-a.call_oi_chg)
+  const callExit = callRows.filter(r=>(r.call_oi_chg||0)<0).sort((a,b)=>a.call_oi_chg-b.call_oi_chg)
+  const putAdd   = putRows.filter(r=>(r.put_oi_chg||0)>0).sort((a,b)=>b.put_oi_chg-a.put_oi_chg)
+  const putExit  = putRows.filter(r=>(r.put_oi_chg||0)<0).sort((a,b)=>a.put_oi_chg-b.put_oi_chg)
+
+  function mkCol(arr, oiKey, chgKey, color, title, note) {
+    const rows = arr.slice(0,5).map(r=>{
+      const s   = Math.round(parseFloat(r.strike)).toLocaleString('en-IN')
+      const chg = ((Math.abs(r[chgKey]||0))/100000).toFixed(2)
+      const oi  = ((r[oiKey]||0)/100000).toFixed(2)
+      return `<div class="act-row">
+        <span class="act-strike" style="color:${color}">₹${s}</span>
+        <div class="act-detail"><div class="act-oi" style="color:${color}">${r[chgKey]>=0?'+':'−'}${chg}L</div>
+        <div class="act-chg">${oi}L total OI</div></div></div>`
+    }).join('')
+    const empty = arr.length===0
+      ? `<div class="act-empty muted">No change yet<br><span style="font-size:9px">Appears after first 5-min cycle</span></div>` : ''
+    return `<div class="act-col">
+      <div class="act-title" style="color:${color}">${title}</div>
+      ${rows}${empty}
+      ${arr.length?`<div class="act-note">${note}</div>`:''}</div>`
+  }
+
+  document.getElementById('act-time').textContent = new Date().toLocaleTimeString('en-IN')
+  document.getElementById('activity').innerHTML =
+    mkCol(callAdd,  'call_oi','call_oi_chg','var(--bear)','CALL SELLERS ADDING ▼','New short positions — resistance strengthening') +
+    mkCol(callExit, 'call_oi','call_oi_chg','var(--bull)','CALL SELLERS EXITING ▲','Short covering — ceiling weakening, bullish signal') +
+    mkCol(putAdd,   'put_oi', 'put_oi_chg', 'var(--bull)','PUT SELLERS ADDING ▲', 'Put writing — support floor being built here') +
+    mkCol(putExit,  'put_oi', 'put_oi_chg', 'var(--warn)','PUT SELLERS EXITING ▼','Put unwinding — support weakening, bearish below')
+}
+
+// ── ANALYSIS PANEL
+function renderAnalysis(d, atk, atm, ind) {
+  const strikes = Object.keys(atk).map(Number).sort((a,b)=>a-b)
+  const ca = strikes.filter(s=>s>atm), pb = strikes.filter(s=>s<atm)
+  const topR = ca.slice().sort((a,b)=>atk[b].call_oi-atk[a].call_oi)[0]
+  const topS = pb.slice().sort((a,b)=>atk[b].put_oi-atk[a].put_oi)[0]
+  const tc   = ca.reduce((s,k)=>s+(atk[k].call_oi||0),0)
+  const tp   = pb.reduce((s,k)=>s+(atk[k].put_oi||0),0)
+  const cadd = ca.reduce((s,k)=>s+Math.max(0,atk[k].call_oi_chg||0),0)
+  const padd = pb.reduce((s,k)=>s+Math.max(0,atk[k].put_oi_chg||0),0)
+  const cex  = ca.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].call_oi_chg||0)),0)
+  const pex  = pb.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].put_oi_chg||0)),0)
+
+  document.getElementById('analysis-time').textContent = new Date().toLocaleTimeString('en-IN')
+
+  const trend = d.trend||'NEUTRAL'
+  const tCol  = trend.includes('BULL')?'var(--bull)':trend.includes('BEAR')?'var(--bear)':'var(--warn)'
+
+  // Combined OI + indicator verdict
+  let combinedVerdict = trend
+  let combinedNote = d.trend_reason || ''
+  if (ind.rsi && ind.adx) {
+    const rsiBull  = ind.rsi > 55
+    const rsiBear  = ind.rsi < 45
+    const adxStrong = ind.adx >= 20
+    const disBull  = (ind.pdi||0) > (ind.ndi||0)
+    if (trend.includes('BULL') && rsiBull && adxStrong && disBull)
+      combinedVerdict = '✅ CONFIRMED BULLISH', combinedNote += ' | RSI+ADX confirm uptrend'
+    else if (trend.includes('BEAR') && rsiBear && adxStrong && !disBull)
+      combinedVerdict = '🔴 CONFIRMED BEARISH', combinedNote += ' | RSI+ADX confirm downtrend'
+    else if (trend.includes('BULL') && !rsiBull)
+      combinedNote += ' | RSI neutral — OI bullish but momentum lagging'
+    else if (trend.includes('BEAR') && !rsiBear)
+      combinedNote += ' | RSI neutral — OI bearish but momentum not confirming'
+  }
+
+  document.getElementById('analysis-grid').innerHTML = `
+    <div style="padding:14px;border-right:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:10px;font-weight:700">KEY OI LEVELS</div>
+      <div class="ts-row"><span class="ts-label">Top Resistance</span><span class="ts-val bear">₹${topR?Math.round(topR).toLocaleString('en-IN'):'—'} (${topR?(atk[topR].call_oi/100000).toFixed(1)+'L CE':'—'})</span></div>
+      <div class="ts-row"><span class="ts-label">Top Support</span><span class="ts-val bull">₹${topS?Math.round(topS).toLocaleString('en-IN'):'—'} (${topS?(atk[topS].put_oi/100000).toFixed(1)+'L PE':'—'})</span></div>
+      <div class="ts-row"><span class="ts-label">Max Pain</span><span class="ts-val warn">₹${Math.round(d.max_pain).toLocaleString('en-IN')}</span></div>
+      <div class="ts-row"><span class="ts-label">ATM</span><span class="ts-val atmc">₹${Math.round(atm).toLocaleString('en-IN')}</span></div>
+      <div class="ts-row"><span class="ts-label">Total Call OI (±5)</span><span class="ts-val bear">${(tc/100000).toFixed(1)}L</span></div>
+      <div class="ts-row"><span class="ts-label">Total Put OI (±5)</span><span class="ts-val bull">${(tp/100000).toFixed(1)}L</span></div>
+      <div class="ts-row"><span class="ts-label">PCR (±5)</span><span class="ts-val ${tc>0&&(tp/tc)>1?'bull':'bear'}">${tc>0?(tp/tc).toFixed(2):'—'}</span></div>
+    </div>
+    <div style="padding:14px;border-right:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:10px;font-weight:700">OI FLOW + INDICATORS</div>
+      <div class="ts-row"><span class="ts-label">Call OI Added</span><span class="ts-val bear">${(cadd/100000).toFixed(2)}L</span></div>
+      <div class="ts-row"><span class="ts-label">Call OI Removed</span><span class="ts-val bull">${(cex/100000).toFixed(2)}L</span></div>
+      <div class="ts-row"><span class="ts-label">Put OI Added</span><span class="ts-val bull">${(padd/100000).toFixed(2)}L</span></div>
+      <div class="ts-row"><span class="ts-label">Put OI Removed</span><span class="ts-val warn">${(pex/100000).toFixed(2)}L</span></div>
+      <div class="ts-row"><span class="ts-label">RSI(14)</span><span class="ts-val" style="color:${ind.rsi>=70?'var(--bear)':ind.rsi<=30?'var(--bull)':'var(--warn)'}">${ind.rsi||'N/A'} — ${ind.rsi_signal||'N/A'}</span></div>
+      <div class="ts-row"><span class="ts-label">ADX(14)</span><span class="ts-val" style="color:${ind.adx>=25?'var(--bull)':'var(--warn)'}">${ind.adx||'N/A'} — ${ind.adx_signal||'N/A'}</span></div>
+      <div class="ts-row"><span class="ts-label">+DI / −DI</span><span class="ts-val"><span class="bull">${ind.pdi||'—'}</span> / <span class="bear">${ind.ndi||'—'}</span></span></div>
+    </div>
+    <div style="padding:14px">
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:10px;font-weight:700">COMBINED VERDICT</div>
+      <div style="font-size:17px;font-weight:700;color:${tCol};margin-bottom:8px">${combinedVerdict}</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.7;font-family:var(--ui)">${combinedNote}</div>
+      <div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:4px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:6px">SNAPSHOT SAVED</div>
+        <div style="font-size:11px;color:var(--bull)">✓ CSV auto-saved every 5 min</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:4px">Open snapshots/ folder to see historical data</div>
+        <div style="font-size:10px;color:var(--text2)">Each file: all strikes + RSI + ADX + OI per refresh</div>
+      </div>
+    </div>`
+}
+
+function set(id,t){document.getElementById(id).textContent=t}
+function styl(id,t,c){const el=document.getElementById(id);el.textContent=t;el.style.color=c}
+function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
+
+setInterval(()=>{
+  secs--
+  if(secs<=0){secs=300;doFetch()}
+  const m=Math.floor(secs/60),s=secs%60
+  document.getElementById('timer').textContent=m+':'+String(s).padStart(2,'0')
+},1000)
+
+doFetch()
+</script>
+</body>
+</html>
